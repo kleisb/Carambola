@@ -3,18 +3,12 @@
     <head>
         <title>Carambola WebGL</title>
 
-        <link rel="stylesheet" href="./css/datgui.css">
-
-        <script type="text/javascript" src="./js/jquery-1.9.1.min.js"></script>
-        <script type="text/javascript" src="./js/dat.gui.min.js"></script>
-        <script type="text/javascript" src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
-
-        <script type="text/javascript" src="./js/carambola.js"></script>
-        <script type="text/javascript" src="./js/carambola_geometry.js"></script>
-        <script type="text/javascript" src="./js/carambola_gpgpu.js"></script>
-        <script type="text/javascript" src="./js/carambola_render.js"></script>
-        <script type="text/javascript" src="./js/graph_formats/matrix_market.js"></script>
-        <script type="text/javascript" src="./js/float_pack.js"></script>
+        <script type="text/javascript" src="scripts/carambola.js"></script>
+        <script type="text/javascript" src="scripts/carambola_geometry.js"></script>
+        <script type="text/javascript" src="scripts/carambola_gpgpu.js"></script>
+        <script type="text/javascript" src="scripts/carambola_render.js"></script>
+        <script type="text/javascript" src="scripts/graph_formats/matrix_market.js"></script>
+        <script type="text/javascript" src="scripts/float_pack.js"></script>
     </head>
     <body>
         <script type="text/javascript">
@@ -122,6 +116,7 @@
                         'Centroid Coeff': 50.0
                     };
 
+                    /*
                     var gui = new dat.GUI();
                     gui.add(gui_elements, 'Step');
                     gui.add(gui_elements, 'Run');
@@ -146,6 +141,7 @@
                             .onChange(function(d) {
                                 viz.simulation.centroid_coeff = d;
                             });
+                    */
                 };
 
                 jQuery.get(graph_base_uri + graph_uri, function(d) {

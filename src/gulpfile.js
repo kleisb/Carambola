@@ -1,69 +1,125 @@
+'use strict';
+
 var gulp = require('gulp');
-var $ = require('gulp-load-plugins')();
+var gutil = require('gulp-util');
 
-gulp.task('scripts', function() {
-    return gulp.src('app/scripts/**/*.js')
-        .pipe($.jshint('.jshintrc'))
-        .pipe($.jshint.reporter('default'))
-        .pipe($.concat('main.js'))
-        .pipe(gulp.dest('dist/scripts'))
-        .pipe($.rename({ suffix: '.min' }))
-        .pipe($.uglify())
-        .pipe(gulp.dest('dist/scripts'))
-        .pipe($.notify({ message: 'Scripts task complete' }));
+var livereload = require('gulp-livereload');
+var connect = require('connect');
+
+var rename = require('gulp-rename');
+var browserify = require('browserify');
+var watchify = require('watchify');
+var es6ify = require('es6ify');
+var reactify = require('reactify');
+var source = require('vinyl-source-stream');
+
+
+/** Config variables */
+var serverPort = 9010;
+var lrPort = 35731;
+
+
+/** File paths */
+var dist = 'dist';
+
+var htmlFiles = 'app/**/*.html';
+
+var devWatchList = [
+    htmlFiles,
+    'app/scripts/**/*.js'
+];
+
+var htmlBuild = dist;
+
+var vendorFiles = [
+    'bower_components/react/react-with-addons.js',
+    'node_modules/es6ify/node_modules/traceur/bin/traceur-runtime.js'];
+var vendorBuild = dist + '/vendor';
+var requireFiles = './node_modules/react/react.js';
+
+
+gulp.task('vendor', function () {
+    return gulp.src(vendorFiles).
+        pipe(gulp.dest(vendorBuild));
 });
 
-/*
-gulp.task('traceur', function () {
-    var runtimePath = $.traceur.RUNTIME_PATH;
-    var filter = $.filter('!traceur-runtime.js');
 
-    return gulp.src([runtimePath, 'webapp/scripts/*.js'])
-        .pipe($.order([
-            'carambola.js'
-        ]))
-        .pipe(filter)
-        .pipe($.traceur({
-            experimental: true,
-            // sourceMap: true,
-            modules: 'register'
-        }))
-        .pipe(filter.restore())
-        .pipe($.concat('app.js'))
-        .pipe($.insert.append('System.get("app" + "");'))
-        .pipe(gulp.dest('build'));
-});
-*/
-
-// Clean
-gulp.task('clean', function() {
-    return gulp.src(['dist/styles', 'dist/scripts'], {read: false})
-        .pipe(clean());
+gulp.task('html', function () {
+    return gulp.src(htmlFiles).
+        pipe(gulp.dest(htmlBuild));
 });
 
-// Watch
-gulp.task('watch', function() {
-    gulp.watch('src/scripts/**/*.js', ['scripts']);
 
-    var server = $.livereload();
+function compileScripts(watch) {
+    gutil.log('Starting browserify');
 
-    // Watch any files in dist/, reload on change
-    gulp.watch(['dist/**']).on('change', function(file) {
-        server.changed(file.path);
-    });
+    var entryFile = './app/scripts/viewerapp/app.js';
+    es6ify.traceurOverrides = {experimental: true};
+
+    var bundler;
+    if (watch) {
+        bundler = watchify(entryFile);
+    } else {
+        bundler = browserify(entryFile);
+    }
+
+    bundler.require(requireFiles);
+    bundler.transform(reactify);
+
+    // Use a match pattern that only matches the .js files under the viewerapp directory.
+    // If .js gets matched under node_modules/react/lib, the es6ify transform fails.
+    bundler.transform(es6ify.configure(/.viewerapp/));
+
+    var rebundle = function () {
+        var stream = bundler.bundle({ debug: true});
+
+        stream.on('error', function (err) {
+            console.error(err)
+        });
+        stream = stream.pipe(source(entryFile));
+        stream.pipe(rename('app.js'));
+
+        stream.pipe(gulp.dest('dist/bundle'));
+    };
+
+    bundler.on('update', rebundle);
+    return rebundle();
+}
+
+
+gulp.task('server', function (next) {
+    var server = connect();
+    server.use(connect.static(dist)).listen(serverPort, next);
 });
 
-gulp.task('webserver', function() {
-    gulp.src('app')
-        .pipe($.webserver({
-            livereload: true,
-            port: 9010,
-            fallback: 'index.html'
-        }));
-});
 
-gulp.task('serve', ['webserver', 'watch']);
+function initWatch(files, task) {
+    if (typeof task === "string") {
+        gulp.start(task);
+        gulp.watch(files, [task]);
+    } else {
+        task.map(function (t) { gulp.start(t) });
+        gulp.watch(files, task);
+    }
+}
 
-gulp.task('default', ['clean'], function() {
-    gulp.start('scripts');
+
+/**
+ * Run default task
+ */
+gulp.task('default', ['vendor', 'server'], function () {
+    var lrServer = livereload(lrPort);
+    var reloadPage = function (evt) {
+        lrServer.changed(evt.path);
+    };
+
+    function initWatch(files, task) {
+        gulp.start(task);
+        gulp.watch(files, [task]);
+    }
+
+    compileScripts(true);
+    initWatch(devWatchList, 'html');
+
+    gulp.watch([dist + '/**/*'], reloadPage);
 });

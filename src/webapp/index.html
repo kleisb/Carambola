@@ -33,7 +33,7 @@
 
                 var graph_base_uri = 'data/json/';
                 var graph_uri = 'miserables.json';
-                var graph_file_format = _.last(graph_uri.split('.'), 1);
+                var graph_file_format = _.last(graph_uri.split('.'));
                 var canvas_width = window.innerWidth - 50,
                     canvas_height = window.innerHeight - 50;
 
@@ -150,12 +150,18 @@
 
                 jQuery.get(graph_base_uri + graph_uri, function(d) {
                     var parsed;
-                    if (graph_file_format == 'json') {
-                        parsed = jQuery.parseJSON(d);
+                    if (_.isObject(d) && _.has(d, 'edges') && _.has(d, 'nodes')) {
+                        parsed = d;
                     }
-                    else if (graph_file_format == 'mtx') {
-                        parsed = Carambola.parse_matrix_market_graph(d);
+                    else {
+                        if (graph_file_format == 'json') {
+                            parsed = jQuery.parseJSON(d);
+                        }
+                        else if (graph_file_format == 'mtx') {
+                            parsed = Carambola.parse_matrix_market_graph(d);
+                        }
                     }
+
 
                     var graph = process_graph(parsed);
 
